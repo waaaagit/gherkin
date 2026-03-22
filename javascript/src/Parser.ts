@@ -59,6 +59,8 @@ export enum TokenType {
   TableRow,
   Language,
   Other,
+  ForLine,
+  EndForLine,
 }
 
 export enum RuleType {
@@ -95,6 +97,7 @@ export enum RuleType {
   Tags, // Tags! := #TagLine+
   DescriptionHelper, // DescriptionHelper := #Empty* Description?
   Description, // Description! := (#Other | #Comment)+
+  ForLoop, // ForLoop! := #ForLine Step* #EndForLine
 }
 
 interface Context {
@@ -106,6 +109,7 @@ interface Context {
 export default class Parser<AstNode> {
   public stopAtFirstError = false
   private context: Context
+  private _forReturnState = 0
 
   constructor(
     private readonly builder: IAstBuilder<AstNode, TokenType, RuleType>,
@@ -113,6 +117,7 @@ export default class Parser<AstNode> {
   ) {}
 
   public parse(gherkinSource: string): messages.GherkinDocument {
+    this._forReturnState = 0
     const tokenScanner = new TokenScanner(
       gherkinSource,
       (line: string, location:  messages.Location) => {
@@ -293,6 +298,16 @@ export default class Parser<AstNode> {
       return this.matchTokenAt_41(token, context);
     case 42:
       return this.matchTokenAt_42(token, context);
+    case 43:
+      return this.matchTokenAt_43(token, context);
+    case 44:
+      return this.matchTokenAt_44(token, context);
+    case 45:
+      return this.matchTokenAt_45(token, context);
+    case 46:
+      return this.matchTokenAt_46(token, context);
+    case 47:
+      return this.matchTokenAt_47(token, context);
     default:
       throw new Error("Unknown state: " + state);
     }
@@ -560,6 +575,20 @@ export default class Parser<AstNode> {
       this.build(context, token);
       return 7;
     }
+    if(this.match_ForLine(context, token)) {
+      const forToken = token as Token;
+      const count = (forToken as any).forCount;
+      if (count <= 0) {
+        const error = ParserException.create('N must be > 0', token.location.line, token.location.column);
+        if (this.stopAtFirstError) throw error;
+        this.addError(context, error);
+        return 5;
+      }
+      this._forReturnState = 5;
+      this.startRule(context, RuleType.ForLoop);
+      this.build(context, token);
+      return 43;
+    }
     if(this.match_TagLine(context, token)) {
       if(this.lookahead_0(context, token)) {
       this.endRule(context);
@@ -699,6 +728,21 @@ export default class Parser<AstNode> {
       this.build(context, token);
       return 7;
     }
+    if(this.match_ForLine(context, token)) {
+      const forToken = token as Token;
+      const count = (forToken as any).forCount;
+      if (count <= 0) {
+        const error = ParserException.create('N must be > 0', token.location.line, token.location.column);
+        if (this.stopAtFirstError) throw error;
+        this.addError(context, error);
+        return 5;
+      }
+      this._forReturnState = 5;
+      this.endRule(context);
+      this.startRule(context, RuleType.ForLoop);
+      this.build(context, token);
+      return 43;
+    }
     if(this.match_TagLine(context, token)) {
       if(this.lookahead_0(context, token)) {
       this.endRule(context);
@@ -764,6 +808,12 @@ export default class Parser<AstNode> {
     }
     if(this.match_TableRow(context, token)) {
       this.build(context, token);
+      return 8;
+    }
+    if(this.match_EndForLine(context, token)) {
+      const error = ParserException.create('ENDFOR without matching FOR', token.location.line, token.location.column);
+      if (this.stopAtFirstError) throw error;
+      this.addError(context, error);
       return 8;
     }
     if(this.match_StepLine(context, token)) {
@@ -882,6 +932,20 @@ export default class Parser<AstNode> {
       this.startRule(context, RuleType.Step);
       this.build(context, token);
       return 12;
+    }
+    if(this.match_ForLine(context, token)) {
+      const forToken = token as Token;
+      const count = (forToken as any).forCount;
+      if (count <= 0) {
+        const error = ParserException.create('N must be > 0', token.location.line, token.location.column);
+        if (this.stopAtFirstError) throw error;
+        this.addError(context, error);
+        return 10;
+      }
+      this._forReturnState = 10;
+      this.startRule(context, RuleType.ForLoop);
+      this.build(context, token);
+      return 43;
     }
     if(this.match_TagLine(context, token)) {
       if(this.lookahead_1(context, token)) {
@@ -1062,6 +1126,21 @@ export default class Parser<AstNode> {
       this.build(context, token);
       return 12;
     }
+    if(this.match_ForLine(context, token)) {
+      const forToken = token as Token;
+      const count = (forToken as any).forCount;
+      if (count <= 0) {
+        const error = ParserException.create('N must be > 0', token.location.line, token.location.column);
+        if (this.stopAtFirstError) throw error;
+        this.addError(context, error);
+        return 10;
+      }
+      this._forReturnState = 10;
+      this.endRule(context);
+      this.startRule(context, RuleType.ForLoop);
+      this.build(context, token);
+      return 43;
+    }
     if(this.match_TagLine(context, token)) {
       if(this.lookahead_1(context, token)) {
       this.endRule(context);
@@ -1148,6 +1227,12 @@ export default class Parser<AstNode> {
     }
     if(this.match_TableRow(context, token)) {
       this.build(context, token);
+      return 13;
+    }
+    if(this.match_EndForLine(context, token)) {
+      const error = ParserException.create('ENDFOR without matching FOR', token.location.line, token.location.column);
+      if (this.stopAtFirstError) throw error;
+      this.addError(context, error);
       return 13;
     }
     if(this.match_StepLine(context, token)) {
@@ -1767,6 +1852,20 @@ export default class Parser<AstNode> {
       this.build(context, token);
       return 23;
     }
+    if(this.match_ForLine(context, token)) {
+      const forToken = token as Token;
+      const count = (forToken as any).forCount;
+      if (count <= 0) {
+        const error = ParserException.create('N must be > 0', token.location.line, token.location.column);
+        if (this.stopAtFirstError) throw error;
+        this.addError(context, error);
+        return 21;
+      }
+      this._forReturnState = 21;
+      this.startRule(context, RuleType.ForLoop);
+      this.build(context, token);
+      return 43;
+    }
     if(this.match_TagLine(context, token)) {
       if(this.lookahead_0(context, token)) {
       this.endRule(context);
@@ -1807,7 +1906,7 @@ export default class Parser<AstNode> {
     }
 
     token.detach();
-    const expectedTokens = ["#EOF", "#Empty", "#Comment", "#StepLine", "#TagLine", "#ScenarioLine", "#RuleLine", "#Other"];
+    const expectedTokens = ["#EOF", "#Empty", "#Comment", "#StepLine", "#ForLine", "#TagLine", "#ScenarioLine", "#RuleLine", "#Other"];
     const error = token.isEof ?
       UnexpectedEOFException.create(token, expectedTokens) :
       UnexpectedTokenException.create(token, expectedTokens);
@@ -1893,6 +1992,7 @@ export default class Parser<AstNode> {
       this.endRule(context);
       this.endRule(context);
       this.endRule(context);
+      this.endRule(context);
       this.build(context, token);
       return 34;
     }
@@ -1911,6 +2011,21 @@ export default class Parser<AstNode> {
       this.startRule(context, RuleType.Step);
       this.build(context, token);
       return 23;
+    }
+    if(this.match_ForLine(context, token)) {
+      const forToken = token as Token;
+      const count = (forToken as any).forCount;
+      if (count <= 0) {
+        const error = ParserException.create('N must be > 0', token.location.line, token.location.column);
+        if (this.stopAtFirstError) throw error;
+        this.addError(context, error);
+        return 21;
+      }
+      this.endRule(context);
+      this._forReturnState = 21;
+      this.startRule(context, RuleType.ForLoop);
+      this.build(context, token);
+      return 43;
     }
     if(this.match_TagLine(context, token)) {
       if(this.lookahead_0(context, token)) {
@@ -1980,6 +2095,12 @@ export default class Parser<AstNode> {
     }
     if(this.match_TableRow(context, token)) {
       this.build(context, token);
+      return 24;
+    }
+    if(this.match_EndForLine(context, token)) {
+      const error = ParserException.create('ENDFOR without matching FOR', token.location.line, token.location.column);
+      if (this.stopAtFirstError) throw error;
+      this.addError(context, error);
       return 24;
     }
     if(this.match_StepLine(context, token)) {
@@ -2101,6 +2222,20 @@ export default class Parser<AstNode> {
       this.startRule(context, RuleType.Step);
       this.build(context, token);
       return 28;
+    }
+    if(this.match_ForLine(context, token)) {
+      const forToken = token as Token;
+      const count = (forToken as any).forCount;
+      if (count <= 0) {
+        const error = ParserException.create('N must be > 0', token.location.line, token.location.column);
+        if (this.stopAtFirstError) throw error;
+        this.addError(context, error);
+        return 26;
+      }
+      this._forReturnState = 26;
+      this.startRule(context, RuleType.ForLoop);
+      this.build(context, token);
+      return 43;
     }
     if(this.match_TagLine(context, token)) {
       if(this.lookahead_1(context, token)) {
@@ -2287,6 +2422,21 @@ export default class Parser<AstNode> {
       this.build(context, token);
       return 28;
     }
+    if(this.match_ForLine(context, token)) {
+      const forToken = token as Token;
+      const count = (forToken as any).forCount;
+      if (count <= 0) {
+        const error = ParserException.create('N must be > 0', token.location.line, token.location.column);
+        if (this.stopAtFirstError) throw error;
+        this.addError(context, error);
+        return 26;
+      }
+      this.endRule(context);
+      this._forReturnState = 26;
+      this.startRule(context, RuleType.ForLoop);
+      this.build(context, token);
+      return 43;
+    }
     if(this.match_TagLine(context, token)) {
       if(this.lookahead_1(context, token)) {
       this.endRule(context);
@@ -2376,6 +2526,12 @@ export default class Parser<AstNode> {
     }
     if(this.match_TableRow(context, token)) {
       this.build(context, token);
+      return 29;
+    }
+    if(this.match_EndForLine(context, token)) {
+      const error = ParserException.create('ENDFOR without matching FOR', token.location.line, token.location.column);
+      if (this.stopAtFirstError) throw error;
+      this.addError(context, error);
       return 29;
     }
     if(this.match_StepLine(context, token)) {
@@ -2849,6 +3005,11 @@ export default class Parser<AstNode> {
       this.build(context, token);
       return 28;
     }
+    if(this.match_EndForLine(context, token)) {
+      this.endRule(context);
+      this.endRule(context);
+      return 28;
+    }
     if(this.match_TagLine(context, token)) {
       if(this.lookahead_1(context, token)) {
       this.endRule(context);
@@ -3065,6 +3226,11 @@ export default class Parser<AstNode> {
       this.build(context, token);
       return 12;
     }
+    if(this.match_EndForLine(context, token)) {
+      this.endRule(context);
+      this.endRule(context);
+      return 12;
+    }
     if(this.match_TagLine(context, token)) {
       if(this.lookahead_1(context, token)) {
       this.endRule(context);
@@ -3171,6 +3337,7 @@ export default class Parser<AstNode> {
       this.endRule(context);
       this.endRule(context);
       this.endRule(context);
+      this.endRule(context);
       this.build(context, token);
       return 34;
     }
@@ -3237,6 +3404,184 @@ export default class Parser<AstNode> {
     if (this.stopAtFirstError) throw error;
     this.addError(context, error);
     return 42;  }
+
+  // Inside FOR loop
+  private matchTokenAt_43(token: IToken<TokenType>, context: Context) {
+    if(this.match_EOF(context, token)) {
+      const error = ParserException.create('FOR was not closed', token.location.line, token.location.column);
+      if (this.stopAtFirstError) throw error;
+      this.addError(context, error);
+      return 43;
+    }
+    if(this.match_StepLine(context, token)) {
+      this.startRule(context, RuleType.Step);
+      this.build(context, token);
+      return 44;
+    }
+    if(this.match_ForLine(context, token)) {
+      const error = ParserException.create('Nested FOR loops are not supported', token.location.line, token.location.column);
+      if (this.stopAtFirstError) throw error;
+      this.addError(context, error);
+      return 43;
+    }
+    if(this.match_EndForLine(context, token)) {
+      this.endRule(context);
+      return this._forReturnState || 7;
+    }
+
+    token.detach();
+    const expectedTokens = ["#EOF", "#StepLine", "#EndForLine"];
+    const error = token.isEof ?
+      UnexpectedEOFException.create(token, expectedTokens) :
+      UnexpectedTokenException.create(token, expectedTokens);
+    if (this.stopAtFirstError) throw error;
+    this.addError(context, error);
+    return 43;  }
+
+  private matchTokenAt_44(token: IToken<TokenType>, context: Context) {
+    if(this.match_TableRow(context, token)) {
+      this.startRule(context, RuleType.DataTable);
+      this.build(context, token);
+      return 45;
+    }
+    if(this.match_DocStringSeparator(context, token)) {
+      this.startRule(context, RuleType.DocString);
+      this.build(context, token);
+      return 46;
+    }
+    if(this.match_StepLine(context, token)) {
+      this.endRule(context);
+      this.startRule(context, RuleType.Step);
+      this.build(context, token);
+      return 44;
+    }
+    if(this.match_ForLine(context, token)) {
+      const error = ParserException.create('Nested FOR loops are not supported', token.location.line, token.location.column);
+      if (this.stopAtFirstError) throw error;
+      this.addError(context, error);
+      return 44;
+    }
+    if(this.match_EndForLine(context, token)) {
+      this.endRule(context);
+      this.endRule(context);
+      return this._forReturnState || 7;
+    }
+    if(this.match_Comment(context, token)) {
+      this.build(context, token);
+      return 44;
+    }
+    if(this.match_Empty(context, token)) {
+      this.build(context, token);
+      return 44;
+    }
+
+    token.detach();
+    const expectedTokens = ["#TableRow", "#DocStringSeparator", "#StepLine", "#EndForLine", "#Comment", "#Empty"];
+    const error = token.isEof ?
+      UnexpectedEOFException.create(token, expectedTokens) :
+      UnexpectedTokenException.create(token, expectedTokens);
+    if (this.stopAtFirstError) throw error;
+    this.addError(context, error);
+    return 44;  }
+
+  private matchTokenAt_45(token: IToken<TokenType>, context: Context) {
+    if(this.match_TableRow(context, token)) {
+      this.build(context, token);
+      return 45;
+    }
+    if(this.match_StepLine(context, token)) {
+      this.endRule(context);
+      this.endRule(context);
+      this.startRule(context, RuleType.Step);
+      this.build(context, token);
+      return 44;
+    }
+    if(this.match_ForLine(context, token)) {
+      const error = ParserException.create('Nested FOR loops are not supported', token.location.line, token.location.column);
+      if (this.stopAtFirstError) throw error;
+      this.addError(context, error);
+      return 45;
+    }
+    if(this.match_EndForLine(context, token)) {
+      this.endRule(context);
+      this.endRule(context);
+      this.endRule(context);
+      return this._forReturnState || 7;
+    }
+    if(this.match_Comment(context, token)) {
+      this.build(context, token);
+      return 45;
+    }
+    if(this.match_Empty(context, token)) {
+      this.build(context, token);
+      return 45;
+    }
+
+    token.detach();
+    const expectedTokens = ["#TableRow", "#StepLine", "#EndForLine", "#Comment", "#Empty"];
+    const error = token.isEof ?
+      UnexpectedEOFException.create(token, expectedTokens) :
+      UnexpectedTokenException.create(token, expectedTokens);
+    if (this.stopAtFirstError) throw error;
+    this.addError(context, error);
+    return 45;  }
+
+  private matchTokenAt_46(token: IToken<TokenType>, context: Context) {
+    if(this.match_DocStringSeparator(context, token)) {
+      this.build(context, token);
+      return 47;
+    }
+    if(this.match_Other(context, token)) {
+      this.build(context, token);
+      return 46;
+    }
+
+    token.detach();
+    const expectedTokens = ["#DocStringSeparator", "#Other"];
+    const error = token.isEof ?
+      UnexpectedEOFException.create(token, expectedTokens) :
+      UnexpectedTokenException.create(token, expectedTokens);
+    if (this.stopAtFirstError) throw error;
+    this.addError(context, error);
+    return 46;  }
+
+  private matchTokenAt_47(token: IToken<TokenType>, context: Context) {
+    if(this.match_StepLine(context, token)) {
+      this.endRule(context);
+      this.endRule(context);
+      this.startRule(context, RuleType.Step);
+      this.build(context, token);
+      return 44;
+    }
+    if(this.match_ForLine(context, token)) {
+      const error = ParserException.create('Nested FOR loops are not supported', token.location.line, token.location.column);
+      if (this.stopAtFirstError) throw error;
+      this.addError(context, error);
+      return 47;
+    }
+    if(this.match_EndForLine(context, token)) {
+      this.endRule(context);
+      this.endRule(context);
+      this.endRule(context);
+      return this._forReturnState || 7;
+    }
+    if(this.match_Comment(context, token)) {
+      this.build(context, token);
+      return 47;
+    }
+    if(this.match_Empty(context, token)) {
+      this.build(context, token);
+      return 47;
+    }
+
+    token.detach();
+    const expectedTokens = ["#StepLine", "#EndForLine", "#Comment", "#Empty"];
+    const error = token.isEof ?
+      UnexpectedEOFException.create(token, expectedTokens) :
+      UnexpectedTokenException.create(token, expectedTokens);
+    if (this.stopAtFirstError) throw error;
+    this.addError(context, error);
+    return 47;  }
 
 
   private match_EOF(context: Context, token: IToken<TokenType>) {
@@ -3306,6 +3651,16 @@ export default class Parser<AstNode> {
   private match_Other(context: Context, token: IToken<TokenType>) {
     if(token.isEof) return false;
     return this.handleExternalError(context, false, () => this.tokenMatcher.match_Other(token));
+  }
+
+  private match_ForLine(context: Context, token: IToken<TokenType>) {
+    if(token.isEof) return false;
+    return this.handleExternalError(context, false, () => this.tokenMatcher.match_ForLine(token));
+  }
+
+  private match_EndForLine(context: Context, token: IToken<TokenType>) {
+    if(token.isEof) return false;
+    return this.handleExternalError(context, false, () => this.tokenMatcher.match_EndForLine(token));
   }
 
 

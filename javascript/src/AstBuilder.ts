@@ -30,7 +30,14 @@ export default class AstBuilder implements IAstBuilder<AstNode, TokenType, RuleT
   endRule() {
     const node = this.stack.pop()
     const transformedNode = this.transformNode(node)
-    this.currentNode().add(node.ruleType, transformedNode)
+    // ForLoop returns an array of expanded steps
+    if (node.ruleType === RuleType.ForLoop && Array.isArray(transformedNode)) {
+      for (const item of transformedNode) {
+        this.currentNode().add(RuleType.Step, item)
+      }
+    } else {
+      this.currentNode().add(node.ruleType, transformedNode)
+    }
   }
 
   build(token: IToken<TokenType>) {
@@ -113,8 +120,37 @@ export default class AstBuilder implements IAstBuilder<AstNode, TokenType, RuleT
     })
   }
 
+  expandForLoop(steps: messages.Step[], count: number): messages.Step[] {
+    const result: messages.Step[] = []
+    for (let i = 0; i < count; i++) {
+      for (const step of steps) {
+        result.push(this.shallowCopyStep(step))
+      }
+    }
+    return result
+  }
+
+  shallowCopyStep(step: messages.Step): messages.Step {
+    return {
+      id: this.newId(),
+      location: step.location,
+      keyword: step.keyword,
+      keywordType: step.keywordType,
+      text: step.text,
+      dataTable: step.dataTable ? { ...step.dataTable } : undefined,
+      docString: step.docString ? { ...step.docString } : undefined,
+    }
+  }
+
   transformNode(node: AstNode) {
     switch (node.ruleType) {
+      case RuleType.ForLoop: {
+        const forToken = node.getToken(TokenType.ForLine)
+        const count = (forToken as any).forCount
+        const steps = this.getSteps(node)
+        const expandedSteps = this.expandForLoop(steps, count)
+        return expandedSteps
+      }
       case RuleType.Step: {
         const stepLine = node.getToken(TokenType.StepLine)
         const dataTable = node.getSingle(RuleType.DataTable)

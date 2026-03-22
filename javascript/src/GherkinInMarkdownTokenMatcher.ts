@@ -331,6 +331,32 @@ export default class GherkinInMarkdownTokenMatcher implements ITokenMatcher<Toke
     return true
   }
 
+  match_ForLine(token: Token): boolean {
+    const match = token.line.trimmedLineText.match(/^FOR\s+(\d+)\s*$/i)
+    if (match) {
+      const count = parseInt(match[1], 10)
+      if (count < 0) {
+        throw new Error('N cannot be negative')
+      }
+      token.matchedType = TokenType.ForLine
+      token.matchedText = match[1]
+      token.matchedKeyword = 'FOR'
+      ;(token as any).forCount = count
+      return true
+    }
+    return false
+  }
+
+  match_EndForLine(token: Token): boolean {
+    if (/^ENDFOR\s*$/i.test(token.line.trimmedLineText)) {
+      token.matchedType = TokenType.EndForLine
+      token.matchedText = null
+      token.matchedKeyword = 'ENDFOR'
+      return true
+    }
+    return false
+  }
+
   reset(): void {
     if (this.dialectName !== this.defaultDialectName) {
       this.changeDialect(this.defaultDialectName)

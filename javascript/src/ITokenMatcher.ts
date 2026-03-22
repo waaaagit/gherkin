@@ -33,4 +33,8 @@ export default interface ITokenMatcher<TokenType> {
   match_StepLine(token: IToken<TokenType>): boolean
 
   match_Other(token: IToken<TokenType>): boolean
+
+  match_ForLine(token: IToken<TokenType>): boolean
+
+  match_EndForLine(token: IToken<TokenType>): boolean
 }

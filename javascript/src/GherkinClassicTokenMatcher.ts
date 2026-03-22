@@ -176,6 +176,28 @@ export default class GherkinClassicTokenMatcher implements ITokenMatcher<TokenTy
     return false
   }
 
+  match_ForLine(token: IToken<TokenType>) {
+    const match = token.line.trimmedLineText.match(/^FOR\s+(\d+)\s*$/i)
+    if (match) {
+      const count = parseInt(match[1], 10)
+      if (count < 0) {
+        throw ParserException.create('N cannot be negative', token.line.lineNumber, token.line.indent + 1)
+      }
+      this.setTokenMatched(token, TokenType.ForLine, match[1], 'FOR')
+      ;(token as any).forCount = count
+      return true
+    }
+    return false
+  }
+
+  match_EndForLine(token: IToken<TokenType>) {
+    if (/^ENDFOR\s*$/i.test(token.line.trimmedLineText)) {
+      this.setTokenMatched(token, TokenType.EndForLine, null, 'ENDFOR')
+      return true
+    }
+    return false
+  }
+
   match_StepLine(token: IToken<TokenType>) {
     for (const keyword of this.sortedStepKeywords) {
       if (token.line.startsWith(keyword)) {
